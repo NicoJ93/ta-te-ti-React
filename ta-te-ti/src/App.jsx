@@ -1,34 +1,89 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import confetti from 'canvas-confetti';
+
+import { TURNS } from './constants'
+import { Square } from './components/Square.jsx'
+import {WinnerModal} from './components/WinnerModal.jsx'
+import { checkWinnerFrom, checkEndGame } from './logic/board.js'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [board, setBoard] = useState(() => {
+    const boardFromStorage = window.localStorage.getItem('board')
+
+    return boardFromStorage ? JSON.parse(boardFromStorage) :
+    Array(9).fill(null)
+  })
+
+  const [turn, setTurn] = useState(() => {
+    const turnFormStorage = window.localStorage.getItem('turn')
+    return turnFormStorage ?? TURNS.X /* Si es null respeta TURNS.X */
+  })
+
+  /* null es que no hay ganador, false es que hay un empate */
+  const [winner, setWinner] = useState(null)
+  
+  const resetGame = () => {
+    setBoard(Array(9).fill(null))
+    setTurn(TURNS.X)
+    setWinner(null)
+
+    window.localStorage.removeItem('board')
+    window.localStorage.removeItem('turn')
+  }
+
+  const updateBoard = (index) => {
+    /* Esta posición no se actualiza si ya tiene algo */
+    if(board[index]) return
+    /* Actualización del tablero */
+    const newBoard = [...board]
+    newBoard[index] = turn
+    setBoard(newBoard)
+    /* Cambio de turno */
+    const newTurn = turn === TURNS.X ? TURNS.O : TURNS. X
+    setTurn(newTurn)
+    /* Guardar partida */
+    window.localStorage.setItem('board', JSON.stringify(newBoard))
+    window.localStorage.setItem('turn', newTurn)
+    /* Revisa si hay ganador */
+    const newWinner = checkWinnerFrom(newBoard)
+    if (newWinner) {
+      confetti()
+      setWinner (newWinner)
+    } else if (checkEndGame(newBoard)){
+      setWinner(false)
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+  <main className="board">
+    <h1>Ta te ti</h1>
+    <button onClick={resetGame}>Reset del juego</button>
+    <section className="game">
+      {
+        board.map((square, index) => {
+          return (
+            <Square
+              key={index}
+              index={index}
+              updateBoard={updateBoard }
+              >
+                {board[index]}
+            </Square>
+          )
+        })
+      }
+    </section>
+    <section >
+      <Square isSelected={turn === TURNS.X}>
+        {TURNS.X}
+      </Square>
+      <Square isSelected={turn === TURNS.O}>
+        {TURNS.O}
+      </Square>
+    </section>
+
+    <WinnerModal resetGame={resetGame} winner={winner}></WinnerModal>
+  </main>
   )
 }
 
